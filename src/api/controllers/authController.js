@@ -21,28 +21,50 @@ exports.signUp = async (req, res) => {
     try {
         const { email, password, fullName, gender } = req.body;
 
-        // Check if user already exists
-        const existingUser = await connection.query('SELECT * FROM user WHERE email = ?', [email]);
-        if (existingUser.length > 0) {
-            return res.status(400).json({ error: 'Email already exists' });
-        }
-        // const hashedPassword = await hashPassword(password);
-        const insertQuery = `
-            INSERT INTO user (email, password, fullName, gender)
-            VALUES (?, ?, ?, ?)
-        `;
-        await connection.query(insertQuery, [email, password, fullName, gender]);
+        // Retrieve user from the database using prepared statement
+        connection.query('SELECT * FROM user WHERE email = ?', [email], async (err, results) => {
+            if (err) {
+                console.error(err);
+                return res.status(500).json({ error: 'Internal Server Error' });
+            }
 
-        // Fetch inserted user data
-        const insertedUser = await connection.query('SELECT * FROM user WHERE email = ?', [email]);
-        const user = insertedUser[0];
-        
-        res.status(201).json(user);
+            // Check if user already exists
+            if (results.length > 0) {
+                return res.status(400).json({ error: 'Email already exists' });
+            }
+
+            // Insert new user record into the database
+            connection.query('INSERT INTO user (email, password, fullName, gender) VALUES (?, ?, ?, ?)', [email, password, fullName, gender], (error, insertResult) => {
+                if (error) {
+                    console.error('Error creating user: ' + error);
+                    return res.status(500).json({ error: 'An error occurred while creating the user.' });
+                }
+
+                console.log('New user added successfully.');
+
+                const userId = insertResult.insertId;
+
+                const newUser = {
+                    id: userId,
+                    email: email,
+                    fullName: fullName,
+                    gender: gender
+                };
+
+                // Generate token
+                const token = createToken(userId);
+
+                // Send the generated JWT and user data in the response
+                res.status(201).json({ message: 'User created successfully.', user: newUser, token });
+            });
+        });
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: 'Internal Server Error' });
     }
 };
+
+
 
 
 

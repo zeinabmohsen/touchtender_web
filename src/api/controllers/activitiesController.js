@@ -13,26 +13,21 @@ exports.createActivityForm = async (req, res) => {
 
         const result = await model.generateContent(prompt);
         const response = await result.response;
-        const text = await response.text(); // Need to await the promise returned by response.text()
-
-        // Split the text by the field titles
+        const text = await response.text(); 
         const activitySections = text.split("**");
-
-        // Construct structured object to store activities by field
         const activitiesByField = {};
 
-        // Iterate through each activity section and parse activities into structuredText
+    
         for (let i = 1; i < activitySections.length; i += 2) {
             const field = activitySections[i].trim();
             let activities = activitySections[i + 1].trim().split("\n\n- ");
             
-            // Remove any asterisks from the beginning or end of activity descriptions
+         
             activities = activities.map(activity => activity.trim().replace(/^\*|\*$/g, ''));
 
-            activitiesByField[field] = activities.filter(activity => activity !== ""); // Filter out empty activities
+            activitiesByField[field] = activities.filter(activity => activity !== "");
         }
 
-        // Construct success message with divided activities
         const successMessage = "Activity form created successfully";
         const generatedText = activitiesByField;
 

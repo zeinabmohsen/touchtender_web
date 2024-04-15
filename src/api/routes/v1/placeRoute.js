@@ -4,9 +4,9 @@ const { createPlace, deletePlace, getAllPlaces, getPlaceById, updatePlace, uploa
 
 
 router.post("/createplace", uploadImage.array('photos', 5),  createPlace);
-// router.delete("/deleteplace/:placeId", deletePlace);
-// router.get("/", getAllPlaces);
-// router.get("/:placeId", getPlaceById);
-// router.put("/updateplace/:placeId", updatePlace);
+router.delete("/deleteplace/:placeId", deletePlace);
+router.get("/", getAllPlaces);
+router.get("/:placeId", getPlaceById);
+router.put("/updateplace/:placeId", updatePlace);
 
 module.exports = router;
