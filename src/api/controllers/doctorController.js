@@ -1,40 +1,78 @@
 const connection = require("../../config/database");
+const { v4: uuidv4 } = require('uuid');
+const multer = require('multer');
+
+const storage = multer.diskStorage({
+  destination: 'uploads/doctors',
+  filename: (req, file, cb) => {
+    const ext = file.mimetype.split('/')[1];
+    const filename = `doctor-${uuidv4()}-${Date.now()}.${ext}`;
+    cb(null, filename);
+  },
+});
+
+const fileFilter = (req, file, cb) => {
+  console.log('Received file mimetype:', file.mimetype);
+  
+  if (file.mimetype.startsWith('image') || file.mimetype === 'image/png' || file.mimetype === 'image/jpeg' || file.mimetype === 'image/jfif') {
+    console.log('File mimetype matches allowed types.');
+    cb(null, true);
+  } else {
+    console.log('File mimetype does not match allowed types.');
+    cb(new Error('Only Images Allowed'), false);
+  }
+};
+
+exports.uploadImage = multer({ storage, fileFilter }).single('doctor_image');
+
 
 exports.createDoctor = async (req, res) => {
-    try {
-      const { doctor_name, specialty, number, description } = req.body;
-  
-      // Validate user input
-      if (!doctor_name || !specialty || !number || !description) {
-        return res.status(400).json({ error: 'All fields are required.' });
-      }
-  
-      // Insert new doctor record into the database
-      connection.query('INSERT INTO doctors (doctor_name, specialty, number, description) VALUES (?, ?, ?, ?)', [doctor_name, specialty, number, description], (error, results) => {
+  try {
+    const { doctor_name, specialty, number, description, experince } = req.body;
+
+    // Validate user input
+    if (!doctor_name || !specialty || !number || !description ) {
+      return res.status(400).json({ error: 'All fields are required.' });
+    }
+
+    let imageUrl = ""; // Initialize imageUrl variable
+
+    // Check if file is uploaded
+    if (req.file) {
+      imageUrl = `/uploads/doctors/${req.file.filename}`; // Set imageUrl to file path
+    }
+
+    // Insert new doctor record into the database
+    connection.query(
+      'INSERT INTO doctors (doctor_name, specialty, number, description, experince, doctor_image) VALUES (?, ?, ?, ?, ?, ?)',
+      [doctor_name, specialty, number, description, experince, imageUrl],
+      (error, results) => {
         if (error) {
           console.error('Error creating doctor: ' + error);
           return res.status(500).json({ error: 'An error occurred while creating the doctor.' });
         }
-  
+
         console.log('New doctor added successfully.');
-  
+
         const doctorId = results.insertId;
-  
+
         const newDoctor = {
           id: doctorId,
           doctor_name: doctor_name,
           specialty: specialty,
           number: number,
-          description: description
+          description: description,
+          doctor_image: imageUrl // Add doctor_image to newDoctor
         };
-  
+
         return res.status(201).json({ message: 'Doctor created successfully.', doctor: newDoctor });
-      });
-    } catch (error) {
-      console.error('Error creating doctor: ' + error);
-      return res.status(500).json({ error: 'An internal server error occurred.' });
-    }
-  };
+      }
+    );
+  } catch (error) {
+    console.error('Error creating doctor: ' + error);
+    return res.status(500).json({ error: 'An internal server error occurred.' });
+  }
+};
   
   // Function to update an existing doctor record
   exports.updateDoctor = async (req, res) => {

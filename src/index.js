@@ -8,6 +8,9 @@ const routes = require("./api/routes/v1/index");
 
 const app = express();
 
+// Serve static files from the /uploads directory
+app.use('/uploads', express.static('uploads'));
+
 // Middleware
 app.use(express.json());
 app.use(
