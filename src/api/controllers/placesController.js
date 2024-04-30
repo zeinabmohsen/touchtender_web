@@ -114,6 +114,7 @@ exports.createPlace = async (req, res) => {
 exports.confirmPlace = async (req, res) => {
   try {
     const placeId = req.params.id;
+    console.log("Confirming place with ID:", placeId);
 
     // Update place status to 'approved'
     const updatePlaceQuery = 'UPDATE places SET status = ? WHERE placeid = ?';
@@ -445,4 +446,44 @@ exports.deletePlace = async (req, res) => {
     }
   };
   
+  exports.getAllPlacesByClassification = async (req, res) => {
+    try {
+      const { classification } = req.params;
+      
+      // Validate classification input
+      if (!classification) {
+        return res.status(400).json({ error: 'Classification parameter is missing.' });
+      }
+  
+      // Query to retrieve all places
+      const getPlacesQuery = 'SELECT * FROM places WHERE classification = ?';
+      const classPlaces = await queryAsync(getPlacesQuery, [classification]);
+  
+      // Loop through each place to fetch its photos and services
+      for (const place of classPlaces) {
+        const placeId = place.placeid;
+  
+        // Query to retrieve photos for the place
+        const getPhotosQuery = 'SELECT * FROM photos WHERE placeid = ?';
+        const photos = await queryAsync(getPhotosQuery, [placeId]);
+  
+        // Query to retrieve services for the place
+        const getServicesQuery = `
+          SELECT s.*
+          FROM services s
+          INNER JOIN place_services ps ON s.serviceid = ps.serviceid
+          WHERE ps.placeid = ?`;
+        const services = await queryAsync(getServicesQuery, [placeId]);
+  
+        // Assign photos and services to the place object
+        place.photos = photos;
+        place.services = services;
+      }
+  
+      return res.status(200).json({ places: classPlaces });
+    } catch (error) {
+      console.error('Error retrieving approved places: ' + error);
+      return res.status(500).json({ error: 'An error occurred while retrieving approved places.' });
+    }
+  };
   

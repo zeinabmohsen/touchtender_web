@@ -5,7 +5,7 @@ const { protect } = require("../../controllers/authController");
 
 router.post("/createdoctor", uploadImage, createDoctor);
 router.delete("/deleteDoctor/:id",  deleteDoctor);
-router.get("/", protect ,getAllDoctors);
+router.get("/" ,getAllDoctors);
 router.get("/:id", getDoctorById);
 router.put("/updatedoctor/:id", updateDoctor);
 
