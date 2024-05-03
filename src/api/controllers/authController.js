@@ -60,6 +60,16 @@ exports.signUp = async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 };
+exports.logout = (req, res) => {
+    try {
+        res.clearCookie('token');
+        res.status(200).json({ message: 'Logout successful' });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
 
 exports.login2 = async (req, res) => {
     try {
