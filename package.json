@@ -3,9 +3,12 @@
   "version": "1.0.0",
   "description": "An application to assist parents of children with special needs.",
   "main": "src/index.js",
+  "engines": {
+    "node": "14.x"
+  },
   "scripts": {
-    "start": "nodemon src/index.js",
-    "dev": "nodemon src/index.js"
+    "start": "node src/index.js",
+    "dev": "node src/index.js"
   },
   "author": "zeinab mohsen",
   "license": "ISC",
