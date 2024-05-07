@@ -3,37 +3,49 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const createToken = require("../utils/createtoken");
 const connection = require("../../config/database");
+const multer = require("multer");
+const { v4: uuidv4 } = require("uuid");
 
-// Define a function to hash passwords
+const storage = multer.diskStorage({
+    destination: 'uploads/users',
+    filename: (req, file, cb) => {
+        const ext = file.mimetype.split('/')[1];
+        const filename = `user-${uuidv4()}.${ext}`;
+        cb(null, filename);
+    },
+});
 
-// const hashPassword = async (password) => {
-//     const saltRounds = 10;
-//     const hashedPassword = await bcrypt.hash(password, saltRounds);
-//     return hashedPassword;
-// };
+const fileFilter = (req, file, cb) => {
+    if (file.mimetype.startsWith('image') || ['image/png', 'image/jpeg', 'image/jfif'].includes(file.mimetype)) {
+        cb(null, true);
+    } else {
+        cb(new Error('Only Images Allowed'), false);
+    }
+};
 
-// const comparePasswords = async (password, hashedPassword) => {
-//     return await bcrypt.compare(password, hashedPassword);
-// };
-
+exports.uploadImage = multer({ storage, fileFilter }).single('user_image');
 
 exports.signUp = async (req, res) => {
     try {
         const { email, password, fullName, gender } = req.body;
 
-        
         connection.query('SELECT * FROM user WHERE email = ?', [email], async (err, results) => {
             if (err) {
                 console.error(err);
                 return res.status(500).json({ error: 'Internal Server Error' });
             }
 
-            
+            let imageUrl = ""; 
+            // Check if file is uploaded
+            if (req.file) {
+                imageUrl = `/uploads/users/${req.file.filename}`; // Set imageUrl to file path
+            }
+
             if (results.length > 0) {
                 return res.status(400).json({ error: 'Email already exists' });
             }
 
-            connection.query('INSERT INTO user (email, password, fullName, gender) VALUES (?, ?, ?, ?)', [email, password, fullName, gender], (error, insertResult) => {
+            connection.query('INSERT INTO user (email, password, fullName, gender, image_url) VALUES (?, ?, ?, ?, ?)', [email, password, fullName, gender, imageUrl], (error, insertResult) => {
                 if (error) {
                     console.error('Error creating user: ' + error);
                     return res.status(500).json({ error: 'An error occurred while creating the user.' });
@@ -47,10 +59,10 @@ exports.signUp = async (req, res) => {
                     id: userId,
                     email: email,
                     fullName: fullName,
-                    gender: gender
+                    gender: gender,
+                    imageUrl: imageUrl
                 };
 
-                
                 const token = createToken(userId);
                 res.status(201).json({ message: 'User created successfully.', user: newUser, token });
             });
@@ -60,6 +72,8 @@ exports.signUp = async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 };
+
+
 exports.logout = (req, res) => {
     try {
         res.clearCookie('token');
@@ -75,7 +89,6 @@ exports.login2 = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-    
         connection.query('SELECT * FROM user WHERE email = ?', [email], async (err, results) => {
             if (err) {
                 console.error(err);
@@ -93,12 +106,16 @@ exports.login2 = async (req, res) => {
             if (password !== user.password) {
                 return res.status(401).json({ error: 'Invalid credentials' });
             }
-            console.log(user.userid)
-                // Generate token
-                const token = createToken(user.userid);
 
-            // Send the generated JWT in the response
-            res.json({ token });
+            // Generate token
+            const token = createToken(user.userid);
+
+            // Send both token and user ID in the response
+            res.json({ token, userId: user.userid });
+
+            // Save token and user ID in localStorage
+            // localStorage.setItem('token', token);
+            // localStorage.setItem('userId', user.userid);
         });
     } catch (err) {
         console.error(err);

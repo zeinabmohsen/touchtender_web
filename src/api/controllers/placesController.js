@@ -27,9 +27,8 @@ exports.uploadImage = multer({ storage, fileFilter });
 
 exports.createPlace = async (req, res) => {
   try {
-    const {  name, classification, region, city, services, location, role } = req.body;
+    const { name, classification, region, city, services, location, role, desc, userid } = req.body;
     console.log(req.body);
-    userid='4';
 
     // Validate user input
     if (!userid || !name || !classification || !region || !city || !services || !location) {
@@ -52,9 +51,9 @@ exports.createPlace = async (req, res) => {
       }
 
       try {
-        // Insert into places table
-        const insertPlaceQuery = 'INSERT INTO places (userid, name, classification, region, city, location, status) VALUES (?, ?, ?, ?, ?, ?, ?)';
-        const placeInsertResult = await queryAsync(insertPlaceQuery, [userid, name, classification, region, city, location, status]);
+        // Insert into places table including the 'desc' column
+        const insertPlaceQuery = 'INSERT INTO places (userid, name, classification, region, city, location, status, description) VALUES (?, ?, ?, ?, ?, ?, ?, ?)';
+        const placeInsertResult = await queryAsync(insertPlaceQuery, [userid, name, classification, region, city, location, status, desc]);
         const placeId = placeInsertResult.insertId;
 
         // Insert into place_services table
@@ -109,6 +108,7 @@ exports.createPlace = async (req, res) => {
     return res.status(500).json({ error: 'An internal server error occurred.' });
   }
 };
+
 
 
 exports.confirmPlace = async (req, res) => {
@@ -486,4 +486,109 @@ exports.deletePlace = async (req, res) => {
       return res.status(500).json({ error: 'An error occurred while retrieving approved places.' });
     }
   };
-  
+
+// Function to create a new rating
+exports.createRating = async (req, res) => {
+  try {
+    const { placeId } = req.params;
+    const { userId, rating } = req.body;
+
+    // Validate user input
+    if (!userId || !rating) {
+      return res.status(400).json({ error: 'userId and rating are required fields.' });
+    }
+
+    // Check if the user has already rated the place
+    const existingRating = await queryAsync('SELECT * FROM place_ratings WHERE place_id = ? AND user_id = ?', [placeId, userId]);
+    if (existingRating.length > 0) {
+      return res.status(400).json({ error: 'User has already rated this place.' });
+    }
+
+    // Insert the new rating into the database
+    await queryAsync('INSERT INTO place_ratings (place_id, user_id, rating) VALUES (?, ?, ?)', [placeId, userId, rating]);
+
+    console.log('Rating created successfully.');
+    return res.status(201).json({ message: 'Rating created successfully.' });
+  } catch (error) {
+    console.error('Error creating rating:', error);
+    return res.status(500).json({ error: 'An error occurred while creating the rating.' });
+  }
+};
+
+
+// Function to update an existing rating
+exports.updateRating = async (req, res) => {
+  try {
+    const { placeId } = req.params;
+    const { userId, rating } = req.body;
+
+    // Validate user input
+    if (!userId || !rating) {
+      return res.status(400).json({ error: 'userId and rating are required fields.' });
+    }
+
+    // Check if the user has already rated the place
+    const existingRating = await queryAsync('SELECT * FROM place_ratings WHERE place_id = ? AND user_id = ?', [placeId, userId]);
+    if (existingRating.length === 0) {
+      return res.status(404).json({ error: 'Rating not found.' });
+    }
+
+    // Update the rating in the database
+    await queryAsync('UPDATE place_ratings SET rating = ? WHERE place_id = ? AND user_id = ?', [rating, placeId, userId]);
+
+    console.log('Rating updated successfully.');
+    return res.status(200).json({ message: 'Rating updated successfully.' });
+  } catch (error) {
+    console.error('Error updating rating:', error);
+    return res.status(500).json({ error: 'An error occurred while updating the rating.' });
+  }
+};
+
+// Function to get ratings for a specific place
+exports.getRatingsForPlace = async (req, res) => {
+  try {
+    const { placeId } = req.params;
+
+    // Retrieve ratings for the specified place
+    const placeRatings = await queryAsync('SELECT * FROM place_ratings WHERE place_id = ?', [placeId]);
+
+    console.log('Ratings fetched successfully.');
+    return res.status(200).json({ ratings: placeRatings });
+  } catch (error) {
+    console.error('Error fetching ratings for place:', error);
+    return res.status(500).json({ error: 'An error occurred while fetching ratings for place.' });
+  }
+};
+
+// Function to get ratings given by a specific user
+exports.getRatingsByUser = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Retrieve ratings given by the specified user
+    const userRatings = await queryAsync('SELECT * FROM place_ratings WHERE user_id = ?', [userId]);
+
+    console.log('Ratings fetched successfully.');
+    return res.status(200).json({ ratings: userRatings });
+  } catch (error) {
+    console.error('Error fetching ratings by user:', error);
+    return res.status(500).json({ error: 'An error occurred while fetching ratings by user.' });
+  }
+};
+
+// Function to get average rating for a specific place
+exports.getAverageRatingForPlace = async (req, res) => {
+  try {
+    const { placeId } = req.params;
+
+    // Retrieve average rating for the specified place
+    const avgRatingResult = await queryAsync('SELECT AVG(rating) AS averageRating FROM place_ratings WHERE place_id = ?', [placeId]);
+    const averageRating = avgRatingResult[0].averageRating;
+
+    console.log('Average rating fetched successfully.');
+    return res.status(200).json({ averageRating });
+  } catch (error) {
+    console.error('Error fetching average rating for place:', error);
+    return res.status(500).json({ error: 'An error occurred while fetching average rating for place.' });
+  }
+};

@@ -28,7 +28,7 @@ exports.uploadImage = multer({ storage, fileFilter }).single('doctor_image');
 
 exports.createDoctor = async (req, res) => {
   try {
-    const { doctor_name, specialty, number, description, experince } = req.body;
+    const { doctor_name, specialty, number, description, experince , region } = req.body;
 
     // Validate user input
     if (!doctor_name || !specialty || !number || !description ) {
@@ -44,8 +44,8 @@ exports.createDoctor = async (req, res) => {
 
     // Insert new doctor record into the database
     connection.query(
-      'INSERT INTO doctors (doctor_name, specialty, number, description, experince, doctor_image) VALUES (?, ?, ?, ?, ?, ?)',
-      [doctor_name, specialty, number, description, experince, imageUrl],
+      'INSERT INTO doctors (doctor_name, specialty, number, description, experince,region , doctor_image) VALUES (?, ?, ?,?, ?, ?, ?)',
+      [doctor_name, specialty, number, description, experince,region , imageUrl],
       (error, results) => {
         if (error) {
           console.error('Error creating doctor: ' + error);
@@ -62,6 +62,7 @@ exports.createDoctor = async (req, res) => {
           specialty: specialty,
           number: number,
           description: description,
+          region:region,
           doctor_image: imageUrl // Add doctor_image to newDoctor
         };
 

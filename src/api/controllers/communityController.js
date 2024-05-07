@@ -2,16 +2,16 @@ const connection = require("../../config/database");
 
 exports.createComment = async (req, res) => {
     try {
-        const { userID, content } = req.body;
+        const { userID, content, category } = req.body;
 
         // Validate user input
-        if (!userID || !content) {
-            return res.status(400).json({ error: 'userID and content are required fields.' });
+        if (!userID || !content || !category) {
+            return res.status(400).json({ error: 'userID, content, and category are required fields.' });
         }
 
-        // Additional validation for userID and content if needed
+        // Additional validation for userID, content, and category if needed
 
-        connection.query('INSERT INTO Comments (UserID, Content) VALUES (?, ?)', [userID, content], (error, results, fields) => {
+        connection.query('INSERT INTO Comments (UserID, Content, category) VALUES (?, ?, ?)', [userID, content, category], (error, results, fields) => {
             if (error) {
                 console.error('Error inserting comment: ' + error);
                 return res.status(500).json({ error: 'An error occurred while creating the comment.' });
@@ -25,7 +25,8 @@ exports.createComment = async (req, res) => {
             const newComment = {
                 id: commentId,
                 userID: userID,
-                content: content
+                content: content,
+                category: category
             };
 
             return res.status(201).json({ message: 'Comment created successfully.', comment: newComment });
@@ -34,21 +35,21 @@ exports.createComment = async (req, res) => {
         console.error('Error creating comment: ' + error);
         return res.status(500).json({ error: 'An internal server error occurred.' });
     }
-}
+};
 
 exports.updateComment = async (req, res) => {
     try {
         const { commentID } = req.params;
-        const { content } = req.body;
+        const { content, category } = req.body;
 
         // Validate user input
-        if (!commentID || !content) {
-            return res.status(400).json({ error: 'commentID and content are required fields.' });
+        if (!commentID || !content || !category) {
+            return res.status(400).json({ error: 'commentID, content, and category are required fields.' });
         }
 
-        // Additional validation for commentID and content if needed
+        // Additional validation for commentID, content, and category if needed
 
-        connection.query('UPDATE Comments SET Content = ? WHERE CommentID = ?', [content, commentID], (error, results, fields) => {
+        connection.query('UPDATE Comments SET Content = ?, category = ? WHERE CommentID = ?', [content, category, commentID], (error, results, fields) => {
             if (error) {
                 console.error('Error updating comment: ' + error);
                 return res.status(500).json({ error: 'An error occurred while updating the comment.' });
@@ -66,7 +67,8 @@ exports.updateComment = async (req, res) => {
         console.error('Error updating comment: ' + error);
         return res.status(500).json({ error: 'An internal server error occurred.' });
     }
-}
+};
+
 // Function to get a comment by its ID
 exports.getCommentById = async (req, res) => {
     try {
