@@ -298,63 +298,6 @@ exports.addLike = async (req, res) => {
     }
 }
 
-// Unlike a comment
-exports.unlikeComment = async (req, res) => {
-    try {
-        const {commentID} =req.params
-        const {  userID } = req.body;
-
-        // Validate user input
-        if (!commentID || !userID) {
-            return res.status(400).json({ error: 'commentID and userID are required fields.' });
-        }
-
-        // Additional validation for commentID and userID if needed
-
-        connection.query('DELETE FROM Likes WHERE CommentID = ? AND UserID = ?', [commentID, userID], (error, results, fields) => {
-            if (error) {
-                console.error('Error removing like: ' + error);
-                return res.status(500).json({ error: 'An error occurred while removing the like.' });
-            }
-
-            console.log('Like removed successfully.');
-
-            return res.status(200).json({ message: 'Like removed successfully.' });
-        });
-    } catch (error) {
-        console.error('Error removing like: ' + error);
-        return res.status(500).json({ error: 'An internal server error occurred.' });
-    }
-}
-
-// Get total likes for a comment
-exports.getTotalLikes = async (req, res) => {
-    try {
-        const { commentID } = req.params;
-
-        // Validate user input
-        if (!commentID) {
-            return res.status(400).json({ error: 'commentID is a required field.' });
-        }
-
-        // Additional validation for commentID if needed
-
-        connection.query('SELECT COUNT(*) AS totalLikes FROM Likes WHERE CommentID = ?', [commentID], (error, results, fields) => {
-            if (error) {
-                console.error('Error getting total likes: ' + error);
-                return res.status(500).json({ error: 'An error occurred while getting total likes.' });
-            }
-
-            const totalLikes = results[0].totalLikes;
-
-            return res.status(200).json({ totalLikes: totalLikes });
-        });
-    } catch (error) {
-        console.error('Error getting total likes: ' + error);
-        return res.status(500).json({ error: 'An internal server error occurred.' });
-    }
-}
-
 const { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } = require('@google/generative-ai');
 require('dotenv').config();
 
@@ -486,6 +429,65 @@ exports.runChat = async (userInput) => {
   const response = result.response;
   return response.text();
 }
+
+// Unlike a comment
+exports.unlikeComment = async (req, res) => {
+    try {
+        const {commentID} =req.params
+        const {  userID } = req.body;
+
+        // Validate user input
+        if (!commentID || !userID) {
+            return res.status(400).json({ error: 'commentID and userID are required fields.' });
+        }
+
+        // Additional validation for commentID and userID if needed
+
+        connection.query('DELETE FROM Likes WHERE CommentID = ? AND UserID = ?', [commentID, userID], (error, results, fields) => {
+            if (error) {
+                console.error('Error removing like: ' + error);
+                return res.status(500).json({ error: 'An error occurred while removing the like.' });
+            }
+
+            console.log('Like removed successfully.');
+
+            return res.status(200).json({ message: 'Like removed successfully.' });
+        });
+    } catch (error) {
+        console.error('Error removing like: ' + error);
+        return res.status(500).json({ error: 'An internal server error occurred.' });
+    }
+}
+
+// Get total likes for a comment
+exports.getTotalLikes = async (req, res) => {
+    try {
+        const { commentID } = req.params;
+
+        // Validate user input
+        if (!commentID) {
+            return res.status(400).json({ error: 'commentID is a required field.' });
+        }
+
+        // Additional validation for commentID if needed
+
+        connection.query('SELECT COUNT(*) AS totalLikes FROM Likes WHERE CommentID = ?', [commentID], (error, results, fields) => {
+            if (error) {
+                console.error('Error getting total likes: ' + error);
+                return res.status(500).json({ error: 'An error occurred while getting total likes.' });
+            }
+
+            const totalLikes = results[0].totalLikes;
+
+            return res.status(200).json({ totalLikes: totalLikes });
+        });
+    } catch (error) {
+        console.error('Error getting total likes: ' + error);
+        return res.status(500).json({ error: 'An internal server error occurred.' });
+    }
+}
+
+
 
 
 
