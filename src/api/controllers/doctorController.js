@@ -75,40 +75,55 @@ exports.createDoctor = async (req, res) => {
   }
 };
   
-  // Function to update an existing doctor record
-  exports.updateDoctor = async (req, res) => {
-    try {
-      const { id } = req.params;
-      const { doctor_name, specialty, number, description } = req.body;
-  
-      // Update the doctor record in the database
-      connection.query('UPDATE doctors SET doctor_name = ?, specialty = ?, number = ?, description = ? WHERE doctor_id = ?', [doctor_name, specialty, number, description, id], (error, results) => {
+// Function to update an existing doctor record
+// Function to update an existing doctor record
+exports.updateDoctor = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { doctor_name, specialty, number, description, experince, region } = req.body;
+    console.log(req.body)
+    let imageUrl = ""; // Initialize imageUrl variable
+
+    // Check if file is uploaded
+    if (req.file) {
+      imageUrl = `/uploads/doctors/${req.file.filename}`; // Set imageUrl to file path
+    }
+
+    // Update the doctor record in the database
+    connection.query(
+      'UPDATE doctors SET doctor_name = ?, specialty = ?, number = ?, description = ?, experince = ?, region = ?, doctor_image = ? WHERE doctor_id = ?', 
+      [doctor_name, specialty, number, description, experince, region, imageUrl, id], 
+      (error, results) => {
         if (error) {
           console.error('Error updating doctor: ' + error);
           return res.status(500).json({ error: 'An error occurred while updating the doctor.' });
         }
-  
+
         if (results.affectedRows === 0) {
           return res.status(404).json({ error: 'Doctor not found.' });
         }
-  
+
         console.log('Doctor updated successfully.');
-  
+
         const updatedDoctor = {
           id: id,
           doctor_name: doctor_name,
           specialty: specialty,
           number: number,
-          description: description
+          description: description,
+          experince: experince,
+          region: region,
+          doctor_image: imageUrl // Add imageUrl to updatedDoctor
         };
-  
+
         return res.status(200).json({ message: 'Doctor updated successfully.', doctor: updatedDoctor });
-      });
-    } catch (error) {
-      console.error('Error updating doctor: ' + error);
-      return res.status(500).json({ error: 'An internal server error occurred.' });
-    }
-  };
+      }
+    );
+  } catch (error) {
+    console.error('Error updating doctor: ' + error);
+    return res.status(500).json({ error: 'An internal server error occurred.' });
+  }
+};
 
   // Function to delete a doctor by ID
 exports.deleteDoctor = async (req, res) => {

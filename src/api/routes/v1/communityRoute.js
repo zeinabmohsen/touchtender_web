@@ -11,7 +11,8 @@ const {
     getCommentById, 
     getRepliesByCommentId,
     getAllComments,
-    getCommentsByUserId
+    getCommentsByUserId,
+    runChat
 } = require("../../controllers/communityController");
 
 // Routes for CRUD operations
@@ -32,5 +33,28 @@ router.get("/comment/:commentID/replies", getRepliesByCommentId); // Route to ge
 // Routes for retrieving all comments and comments by user ID
 router.get("/comments", getAllComments); // Route to get all comments
 router.get("/comments/user/:userID", getCommentsByUserId); // Route to get comments by user ID
+
+
+router.post('/chat', async (req, res) => {
+    try {
+      const userInput = req.body.userInput;
+      console.log('Received user input:', userInput);
+  
+      if (!userInput) {
+        return res.status(400).json({ error: 'Invalid request body' });
+      }
+  
+      const response = await runChat(userInput);
+      res.json({ response });
+    } catch (error) {
+      console.error('Error in chat endpoint:', error);
+      if (error.message) {
+        return res.status(500).json({ error: error.message });
+      } else {
+        return res.status(500).json({ error: 'Internal Server Error' });
+      }
+    }
+  });
+  
 
 module.exports = router;

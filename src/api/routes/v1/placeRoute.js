@@ -7,7 +7,7 @@ const { createPlace, deletePlace, getPlaceById,confirmPlace,rejectPlace,getAllAp
 const { protect } = require("../../controllers/authController");
 
 
-router.post("/createplace",protect, uploadImage.array('photos', 5),  createPlace); // ok
+router.post("/createplace", uploadImage.array('photos', 5),  createPlace); // ok
 router.delete("/:id", deletePlace);  //ok
 router.get('/approved', getAllApprovedPlaces);//ok
 router.get('/places/pending', getPendingPlaces);//ok

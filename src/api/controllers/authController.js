@@ -92,7 +92,7 @@ exports.login2 = async (req, res) => {
         connection.query('SELECT * FROM user WHERE email = ?', [email], async (err, results) => {
             if (err) {
                 console.error(err);
-                return res.status(500).json({ error: 'Internal Server Error' });
+                return res.status(401).json({ success: false, error: 'Invalid credentials' });
             }
 
             // Handle user not found gracefully
@@ -111,7 +111,7 @@ exports.login2 = async (req, res) => {
             const token = createToken(user.userid);
 
             // Send both token and user ID in the response
-            res.json({ token, userId: user.userid });
+            res.json({ success: true ,token, userId: user.userid });
 
             // Save token and user ID in localStorage
             // localStorage.setItem('token', token);
@@ -119,7 +119,7 @@ exports.login2 = async (req, res) => {
         });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ error: 'Internal Server Error' });
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
 };
 
@@ -167,3 +167,66 @@ exports.protect = (req, res, next) => {
 };
 
 
+exports.getUserById = async (req, res) => {
+    try {
+      const { id } = req.params;
+  
+      // Fetch the user record from the database by ID
+      connection.query('SELECT * FROM user WHERE userid = ?', [id], (error, results) => {
+        if (error) {
+          console.error('Error getting user by ID: ' + error);
+          return res.status(500).json({ error: 'An error occurred while fetching the user.' });
+        }
+  
+        if (results.length === 0) {
+          return res.status(404).json({ error: 'User not found.' });
+        }
+  
+        console.log('User fetched successfully.');
+        return res.status(200).json({ user: results[0] });
+      });
+    } catch (error) {
+      console.error('Error getting user by ID: ' + error);
+      return res.status(500).json({ error: 'An internal server error occurred.' });
+    }
+  };
+  
+
+  exports.updateUserById = async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { fullName, email, gender, role } = req.body;
+  
+      // Update the user record in the database
+      connection.query(
+        'UPDATE user SET fullName = ?, email = ?, gender = ?, role = ? WHERE userid = ?',
+        [fullName, email, gender, role, id],
+        (error, results) => {
+          if (error) {
+            console.error('Error updating user: ' + error);
+            return res.status(500).json({ error: 'An error occurred while updating the user.' });
+          }
+  
+          if (results.affectedRows === 0) {
+            return res.status(404).json({ error: 'User not found.' });
+          }
+  
+          console.log('User updated successfully.');
+  
+          const updatedUser = {
+            userid: id,
+            fullName: fullName,
+            email: email,
+            gender: gender,
+            role: role,
+          };
+  
+          return res.status(200).json({ message: 'User updated successfully.', user: updatedUser });
+        }
+      );
+    } catch (error) {
+      console.error('Error updating user: ' + error);
+      return res.status(500).json({ error: 'An internal server error occurred.' });
+    }
+  };
+  

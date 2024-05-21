@@ -1,24 +1,51 @@
 const connection = require("../../config/database");
 const { v4: uuidv4 } = require('uuid');
 const multer = require('multer');
+// const storage = multer.diskStorage({
+//   destination: 'uploads/place',
+//   filename: (req, file, cb) => {
+//     const ext = file.mimetype.split('/')[1];
+//     const filename = `places-${uuidv4()}-${Date.now()}.${ext}`;
+//     cb(null, filename);
+//   },
+// });
+
+// const fileFilter = (req, file, cb) => {
+//   console.log('Received file mimetype:', file.mimetype);
+
+//   if (file.mimetype.startsWith('image') || file.mimetype === 'image/png' || file.mimetype === 'image/jpeg' || file.mimetype === 'image/jfif') {
+//     console.log('File mimetype matches allowed types.');
+//     cb(null, true);
+//   } else {
+//     console.log('File mimetype does not match allowed types.');
+//     cb(new Error('Only Images Allowed'), false);
+//   }
+// };
+
+// try {
+//   exports.uploadImage = multer({ storage, fileFilter });
+// } catch (error) {
+//   console.error('Error setting up multer middleware:', error);
+// }
 
 const storage = multer.diskStorage({
-  destination: 'uploads/place',
+  destination: (req, file, cb) => {
+    console.log('Saving file to uploads/place');
+    cb(null, 'uploads/place');
+  },
   filename: (req, file, cb) => {
     const ext = file.mimetype.split('/')[1];
     const filename = `places-${uuidv4()}-${Date.now()}.${ext}`;
+    console.log('Generated filename:', filename);
     cb(null, filename);
   },
 });
 
 const fileFilter = (req, file, cb) => {
   console.log('Received file mimetype:', file.mimetype);
-  
-  if (file.mimetype.startsWith('image') || file.mimetype === 'image/png' || file.mimetype === 'image/jpeg' || file.mimetype === 'image/jfif') {
-    console.log('File mimetype matches allowed types.');
+  if (file.mimetype.startsWith('image')) {
     cb(null, true);
   } else {
-    console.log('File mimetype does not match allowed types.');
     cb(new Error('Only Images Allowed'), false);
   }
 };
@@ -27,6 +54,8 @@ exports.uploadImage = multer({ storage, fileFilter });
 
 exports.createPlace = async (req, res) => {
   try {
+    console.log('Files received:', req.files);
+    console.log('Body received:', req.body);
     const { name, classification, region, city, services, location, role, desc, userid } = req.body;
     console.log(req.body);
 
@@ -39,6 +68,8 @@ exports.createPlace = async (req, res) => {
     const status = role === 'parent' ? 'pending' : 'approved';
 
     let imageUrls = [];
+    console.log("req:")
+    console.log(req.files)
     if (req.files && req.files.length > 0) {
       imageUrls = req.files.map(file => `/uploads/place/${file.filename}`);
     }
