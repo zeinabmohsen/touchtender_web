@@ -13,6 +13,7 @@
   "author": "zeinab mohsen",
   "license": "ISC",
   "dependencies": {
+    "@google/generative-ai": "^0.11.3",
     "bcrypt": "^5.1.1",
     "cors": "^2.8.5",
     "crypto": "^1.0.1",
