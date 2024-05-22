@@ -5,6 +5,82 @@ const createToken = require("../utils/createtoken");
 const connection = require("../../config/database");
 const multer = require("multer");
 const { v4: uuidv4 } = require("uuid");
+const nodemailer = require('nodemailer');
+
+
+// Function to get IP location
+async function getIpLocation(ip) {
+    const { default: fetch } = await import('node-fetch'); // Dynamic import
+    const response = await fetch(`http://ip-api.com/json/${ip}`);
+    const data = await response.json();
+    return data;
+}
+
+
+// Function to send login email
+async function sendLoginEmail(userEmail, location) {
+    const transporter = nodemailer.createTransport({
+        service: 'gmail',
+        auth: {
+            user: 'tendertouch72@gmail.com',
+            pass: 'Tender@72'
+        }
+    });
+
+    const mailOptions = {
+        from: 'tendertouch72@gmail.com',
+        to: 'zainabhmohsen@gmail.com',
+        subject: 'Login Alert',
+        text: `You have logged in from IP address: ${location.query} located in ${location.city}, ${location.regionName}, ${location.country}.`
+    };
+
+    await transporter.sendMail(mailOptions);
+}
+
+exports.login2 = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+
+        connection.query('SELECT * FROM user WHERE email = ?', [email], async (err, results) => {
+            if (err) {
+                console.error(err);
+                return res.status(401).json({ success: false, error: 'Invalid credentials' });
+            }
+
+            // Handle user not found gracefully
+            if (!results || !results.length) {
+                return res.status(401).json({ error: 'Invalid credentials' });
+            }
+
+            const user = results[0];
+
+            // Compare passwords
+            if (password !== user.password) {
+                return res.status(401).json({ error: 'Invalid credentials' });
+            }
+
+            // Generate token
+            const token = createToken(user.userid);
+
+            // Send both token and user ID in the response
+            res.json({ success: true, token, userId: user.userid });
+
+            // Get the user's IP address
+            const userIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+
+            // Get the IP location
+            const location = await getIpLocation(userIp);
+
+            // Send login email
+            await sendLoginEmail(email, location);
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+};
+
+
 
 const storage = multer.diskStorage({
     destination: 'uploads/users',
@@ -84,44 +160,6 @@ exports.logout = (req, res) => {
     }
 };
 
-
-exports.login2 = async (req, res) => {
-    try {
-        const { email, password } = req.body;
-
-        connection.query('SELECT * FROM user WHERE email = ?', [email], async (err, results) => {
-            if (err) {
-                console.error(err);
-                return res.status(401).json({ success: false, error: 'Invalid credentials' });
-            }
-
-            // Handle user not found gracefully
-            if (!results || !results.length) {
-                return res.status(401).json({ error: 'Invalid credentials' });
-            }
-
-            const user = results[0]; 
-
-            // Compare passwords
-            if (password !== user.password) {
-                return res.status(401).json({ error: 'Invalid credentials' });
-            }
-
-            // Generate token
-            const token = createToken(user.userid);
-
-            // Send both token and user ID in the response
-            res.json({ success: true ,token, userId: user.userid });
-
-            // Save token and user ID in localStorage
-            // localStorage.setItem('token', token);
-            // localStorage.setItem('userId', user.userid);
-        });
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ success: false, error: 'Internal Server Error' });
-    }
-};
 
 
 exports.protect = (req, res, next) => {
