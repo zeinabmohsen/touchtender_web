@@ -12,7 +12,8 @@ const {
     getRepliesByCommentId,
     getAllComments,
     getCommentsByUserId,
-    runChat
+    runChat,
+    getTotalLikesForUser
 } = require("../../controllers/communityController");
 
 // Routes for CRUD operations
@@ -56,5 +57,9 @@ router.post('/chat', async (req, res) => {
     }
   });
   
+  router.get("/totaluserlikes/:userID", getTotalLikesForUser)
+
 
 module.exports = router;
+
+

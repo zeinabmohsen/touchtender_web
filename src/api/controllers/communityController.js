@@ -487,6 +487,33 @@ exports.getTotalLikes = async (req, res) => {
     }
 }
 
+// Get total likes for a user
+exports.getTotalLikesForUser = async (req, res) => {
+    try {
+        const { userID } = req.params;
+
+        // Validate user input
+        if (!userID) {
+            return res.status(400).json({ error: 'userID is a required field.' });
+        }
+
+        // Additional validation for userID if needed
+
+        connection.query('SELECT COUNT(*) AS totalLikes FROM likes WHERE UserID = ?', [userID], (error, results, fields) => {
+            if (error) {
+                console.error('Error getting total likes for user: ' + error);
+                return res.status(500).json({ error: 'An error occurred while getting total likes for user.' });
+            }
+
+            const totalLikes = results[0].totalLikes;
+
+            return res.status(200).json({ totalLikes: totalLikes });
+        });
+    } catch (error) {
+        console.error('Error getting total likes for user: ' + error);
+        return res.status(500).json({ error: 'An internal server error occurred.' });
+    }
+}
 
 
 
