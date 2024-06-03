@@ -1,3 +1,4 @@
+require('dotenv').config(); // Load environment variables
 const crypto = require("crypto");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
@@ -6,7 +7,10 @@ const connection = require("../../config/database");
 const multer = require("multer");
 const { v4: uuidv4 } = require("uuid");
 const nodemailer = require('nodemailer');
+const { promisify } = require('util');
 
+// Promisify the MySQL query method
+const query = promisify(connection.query).bind(connection);
 
 // Function to get IP location
 async function getIpLocation(ip) {
@@ -16,69 +20,69 @@ async function getIpLocation(ip) {
     return data;
 }
 
+const transport = nodemailer.createTransport({
+    host: "sandbox.smtp.mailtrap.io",
+    port: 2525,
+    auth: {
+        user: "184946057fde0e",
+        pass: "f90af2abe10514"
+    }
+});
 
-// Function to send login email
 async function sendLoginEmail(userEmail, location) {
-    const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-            user: 'tendertouch72@gmail.com',
-            pass: 'Tender@72'
-        }
-    });
-
     const mailOptions = {
-        from: 'tendertouch72@gmail.com',
-        to: 'zainabhmohsen@gmail.com',
+        from: 'zainabhmohsen@email.com', // Change this to your email address
+        to: userEmail,
         subject: 'Login Alert',
         text: `You have logged in from IP address: ${location.query} located in ${location.city}, ${location.regionName}, ${location.country}.`
     };
 
-    await transporter.sendMail(mailOptions);
+    try {
+        await transport.sendMail(mailOptions);
+        console.log('Login email sent successfully');
+    } catch (error) {
+        console.error('Error sending login email:', error);
+    }
 }
 
 exports.login2 = async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        connection.query('SELECT * FROM user WHERE email = ?', [email], async (err, results) => {
-            if (err) {
-                console.error(err);
-                return res.status(401).json({ success: false, error: 'Invalid credentials' });
-            }
+        const results = await query('SELECT * FROM user WHERE email = ?', [email]);
 
-            // Handle user not found gracefully
-            if (!results || !results.length) {
-                return res.status(401).json({ error: 'Invalid credentials' });
-            }
+        if (!results || results.length === 0) {
+            return res.status(401).json({ success: false, error: 'Invalid credentials' });
+        }
 
-            const user = results[0];
+        const user = results[0];
 
-            // Compare passwords
-            if (password !== user.password) {
-                return res.status(401).json({ error: 'Invalid credentials' });
-            }
+        // Compare passwords
+        if (password !== user.password) {
+            return res.status(401).json({ success: false, error: 'Invalid credentials' });
+        }
 
-            // Generate token
-            const token = createToken(user.userid);
+        // Generate token
+        const token = jwt.sign({ userId: user.userid }, process.env.JWT_SECRET_KEY, { expiresIn: '1h' });
 
-            // Send both token and user ID in the response
-            res.json({ success: true, token, userId: user.userid });
+        // Send both token and user ID in the response
+        res.json({ success: true, token, userId: user.userid });
 
-            // Get the user's IP address
-            const userIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        // Get the user's IP address
+        const userIp = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+        console.log('User IP:', userIp); // Log the IP address
 
-            // Get the IP location
-            const location = await getIpLocation(userIp);
+        // Get the IP location
+        const location = await getIpLocation(userIp);
 
-            // Send login email
-            await sendLoginEmail(email, location);
-        });
+        // Send login email
+        await sendLoginEmail(email, location);
     } catch (err) {
-        console.error(err);
+        console.error('Error during login process:', err);
         res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
 };
+
 
 
 
