@@ -79,14 +79,13 @@ exports.getCommentById = async (req, res) => {
             return res.status(400).json({ error: 'commentID is a required field.' });
         }
 
-        // Additional validation for commentID if needed
 
-        // Query to get the comment details by its ID
+       
         connection.query(
             `
-            (SELECT Comments.*, Users.userId, Users.image_url, Users.fullname, Replies.* 
+            (SELECT Comments.*, User.userId, User.image_url, User.fullname, Replies.* 
                 FROM Comments 
-                LEFT JOIN Users ON Comments.userId = Users.userId 
+                LEFT JOIN User ON Comments.userId = User.userId 
                 LEFT JOIN Replies ON Comments.commentID = Replies.commentID 
                 WHERE Comments.commentID = ?
                 ORDER BY Comments.createdAt DESC)
