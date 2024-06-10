@@ -7,6 +7,8 @@ const connection = require("../../config/database");
 const multer = require("multer");
 const { v4: uuidv4 } = require("uuid");
 const nodemailer = require('nodemailer');
+const asyncHandler = require('express-async-handler');
+const sendEmail = require('../utils/sendEmail');
 const { promisify } = require('util');
 
 // Promisify the MySQL query method
@@ -82,6 +84,39 @@ exports.login2 = async (req, res) => {
         res.status(500).json({ success: false, error: 'Internal Server Error' });
     }
 };
+
+exports.loginWeb = async (req, res) => {
+    try {
+      const { email, password } = req.body;
+  
+      // Query the doctors table instead of the user table
+      const results = await query('SELECT * FROM doctors WHERE email = ?', [email]);
+  
+      if (!results || results.length === 0) {
+        return res.status(401).json({ success: false, error: 'Invalid credentials' });
+      }
+  
+      const doctor = results[0];
+  
+      // Compare passwords
+      if (password !== doctor.password) {
+        return res.status(401).json({ success: false, error: 'Invalid credentials' });
+      }
+  
+      // Generate token
+      const token = jwt.sign({ doctorId: doctor.id }, process.env.JWT_SECRET_KEY, { expiresIn: '1h' });
+  
+      // Send both token and doctor ID in the response
+      res.json({ success: true, token, userId: doctor.doctor_id , role:doctor.role});
+  
+      // Send login email without IP address and location
+      await sendLoginEmail(email, 'Login successful');
+    } catch (err) {
+      console.error('Error during login process:', err);
+      res.status(500).json({ success: false, error: 'Internal Server Error' });
+    }
+  };
+  
 
 
 
@@ -213,7 +248,6 @@ exports.getUserById = async (req, res) => {
     try {
       const { id } = req.params;
   
-      // Fetch the user record from the database by ID
       connection.query('SELECT * FROM user WHERE userid = ?', [id], (error, results) => {
         if (error) {
           console.error('Error getting user by ID: ' + error);
@@ -238,9 +272,7 @@ exports.getUserById = async (req, res) => {
     try {
       const { id } = req.params;
       const { fullName, email, gender, role } = req.body;
-  
-      // Update the user record in the database
-      connection.query(
+        connection.query(
         'UPDATE user SET fullName = ?, email = ?, gender = ?, role = ? WHERE userid = ?',
         [fullName, email, gender, role, id],
         (error, results) => {
@@ -271,4 +303,93 @@ exports.getUserById = async (req, res) => {
       return res.status(500).json({ error: 'An internal server error occurred.' });
     }
   };
-  
+
+  function generateResetCode() {
+    return Math.floor(100000 + Math.random() * 900000); 
+}
+
+/**
+* Handle forgot password request
+*/
+exports.forgotPassword = (req, res) => {
+    const { email } = req.body;
+
+    
+    const resetCode = generateResetCode();
+    const expiresAt = new Date(Date.now() + 3600000); 
+
+    connection.query('SELECT userid FROM user WHERE email = ?', [email], (err, result) => {
+        if (err) {
+            console.error('Error selecting user:', err);
+            return res.status(500).send('Server error');
+        }
+        if (result.length === 0) return res.status(404).send('User not found');
+
+        const userId = result[0].userid;
+
+        connection.query('INSERT INTO password_resets (user_id, reset_code, expires_at) VALUES (?, ?, ?)',
+            [userId, resetCode, expiresAt], (err) => {
+                if (err) {
+                    console.error('Error inserting reset code:', err);
+                    return res.status(500).send('Server error');
+                }
+
+                
+                sendEmail(email, 'Reset Your TenderTouch App Password', `
+We understand how crucial TenderTouch is for your child's needs. To ensure uninterrupted access, here's your verification code:
+                    
+    Verification Code: ${resetCode}
+                    
+If you need assistance, we're here to help.
+                    
+Best,
+TenderTouch Support Team
+                `)
+                .then(() => res.send('Verification code sent to your email'))
+                .catch(error => {
+                    console.error('Error sending email:', error);
+                    res.status(500).send('Error sending email');
+                });
+            });
+    });
+};
+
+/**
+* Handle reset password request
+*/
+exports.resetPassword = (req, res) => {
+    const { userId, newPassword } = req.body;
+
+    if (!userId || !newPassword) {
+        return res.status(400).send('User ID and new password are required');
+    }
+
+    connection.query('UPDATE user SET password = ? WHERE userid = ?', [newPassword, userId], (err) => {
+        if (err) {
+            console.error('Error updating password:', err);
+            return res.status(500).send('Server error');
+        }
+
+        res.send('Password reset successfully');
+    });
+};
+
+/**
+* Verify the reset code
+*/
+exports.verifyResetCode = (req, res) => {
+    const { code } = req.body;
+
+    connection.query('SELECT user_id, expires_at FROM password_resets WHERE reset_code = ?', [code], (err, result) => {
+        if (err) return res.status(500).send('Server error');
+        if (result.length === 0) return res.status(400).send('Invalid or expired code');
+
+        const { expires_at } = result[0];
+
+        if (Date.now() > new Date(expires_at)) {
+            return res.status(400).send('Code expired');
+        }
+
+        res.send('Code is valid');
+    });
+};
