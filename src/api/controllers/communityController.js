@@ -83,9 +83,9 @@ exports.getCommentById = async (req, res) => {
        
         connection.query(
             `
-            (SELECT Comments.*, User.userId, User.image_url, User.fullname, Replies.* 
+            (SELECT Comments.*, user.userId, user.image_url, user.fullname, Replies.* 
                 FROM Comments 
-                LEFT JOIN User ON Comments.userId = User.userId 
+                LEFT JOIN User ON Comments.userId = user.userId 
                 LEFT JOIN Replies ON Comments.commentID = Replies.commentID 
                 WHERE Comments.commentID = ?
                 ORDER BY Comments.createdAt DESC)
@@ -145,7 +145,7 @@ exports.getRepliesByCommentId = async (req, res) => {
 exports.getAllComments = async (req, res) => {
     try {
         // Query to fetch all comments from the database with user details
-        connection.query('SELECT c.*, u.fullName, u.image_url FROM Comments c JOIN User u ON c.userId = u.userId ORDER BY c.CreatedAt DESC', (error, results, fields) => {
+        connection.query('SELECT c.*, u.fullName, u.image_url FROM Comments c JOIN user u ON c.userId = u.userId ORDER BY c.CreatedAt DESC', (error, results, fields) => {
             if (error) {
                 console.error('Error retrieving comments: ' + error);
                 return res.status(500).json({ error: 'An error occurred while fetching comments.' });
