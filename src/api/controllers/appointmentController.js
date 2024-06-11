@@ -129,7 +129,6 @@ exports.getAppointmentsByDoctor = async (req, res) => {
     try {
         const { doctorId } = req.params;
 
-        // Check if the specified doctor has the role of 'doctor'
         connection.query('SELECT * FROM doctors WHERE doctor_id = ? AND role = "doctor"', [doctorId], (error, doctorResults) => {
             if (error) {
                 console.error('Error checking doctor role: ' + error);
@@ -140,8 +139,12 @@ exports.getAppointmentsByDoctor = async (req, res) => {
                 return res.status(400).json({ error: 'The specified doctor does not exist or is not a doctor.' });
             }
 
-            // Fetch all appointments for the given doctor from the database
-            connection.query('SELECT * FROM appointments WHERE doctor_id = ?', [doctorId], (error, results) => {
+            connection.query(`
+                SELECT appointments.*, user.*
+                FROM appointments
+                INNER JOIN user ON appointments.user_id = user.userid
+                WHERE appointments.doctor_id = ?
+            `, [doctorId], (error, results) => {
                 if (error) {
                     console.error('Error getting appointments by doctor ID: ' + error);
                     return res.status(500).json({ error: 'An error occurred while fetching appointments.' });
