@@ -140,9 +140,9 @@ exports.getAppointmentsByDoctor = async (req, res) => {
             }
 
             connection.query(`
-                SELECT appointments.*, user.*
+                SELECT appointments.*, User.*
                 FROM appointments
-                INNER JOIN user ON appointments.user_id = user.userid
+                INNER JOIN User ON appointments.user_id = User.userid
                 WHERE appointments.doctor_id = ?
             `, [doctorId], (error, results) => {
                 if (error) {
