@@ -3,15 +3,15 @@ const express = require("express");
 const cors = require("cors");
 const session = require("express-session");
 const db = require("./config/database");
-const path = require('path');
+
 
 const routes = require("./api/routes/v1/index");
 
 const app = express();
 
 // Serve static files from the /uploads directory
-// app.use('/uploads', express.static('uploads'));
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use('/uploads', express.static('uploads'));
+
 
 // Middleware
 app.use(express.json());
