@@ -85,7 +85,7 @@ exports.getCommentById = async (req, res) => {
             `
             (SELECT Comments.*, user.userId, user.image_url, user.fullname, Replies.* 
                 FROM Comments 
-                LEFT JOIN User ON Comments.userId = user.userId 
+                LEFT JOIN user ON Comments.userId = user.userId 
                 LEFT JOIN Replies ON Comments.commentID = Replies.commentID 
                 WHERE Comments.commentID = ?
                 ORDER BY Comments.createdAt DESC)
@@ -498,7 +498,7 @@ exports.getTotalLikesForUser = async (req, res) => {
 
         // Additional validation for userID if needed
 
-        connection.query('SELECT COUNT(*) AS totalLikes FROM likes WHERE UserID = ?', [userID], (error, results, fields) => {
+        connection.query('SELECT COUNT(*) AS totalLikes FROM Likes WHERE UserID = ?', [userID], (error, results, fields) => {
             if (error) {
                 console.error('Error getting total likes for user: ' + error);
                 return res.status(500).json({ error: 'An error occurred while getting total likes for user.' });
