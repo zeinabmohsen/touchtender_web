@@ -79,40 +79,73 @@ exports.getCommentById = async (req, res) => {
             return res.status(400).json({ error: 'commentID is a required field.' });
         }
 
+        // Query to fetch comment and its replies
+        const query = `
+            SELECT 
+                Comments.commentID, 
+                Comments.content AS commentContent, 
+                Comments.createdAt AS commentCreatedAt, 
+                user.userId AS commenterUserId, 
+                user.image_url AS commenterImageUrl, 
+                user.fullname AS commenterFullname, 
+                Replies.replyID, 
+                Replies.content AS replyContent, 
+                Replies.createdAt AS replyCreatedAt,
+                Replies.userID AS replyUserId
+            FROM Comments 
+            LEFT JOIN user ON Comments.userId = user.userId 
+            LEFT JOIN Replies ON Comments.commentID = Replies.commentID 
+            WHERE Comments.commentID = ?
+            ORDER BY Replies.createdAt ASC;`;
 
-       
-        connection.query(
-            `
-            (SELECT Comments.*, user.userId, user.image_url, user.fullname, Replies.* 
-                FROM Comments 
-                LEFT JOIN user ON Comments.userId = user.userId 
-                LEFT JOIN Replies ON Comments.commentID = Replies.commentID 
-                WHERE Comments.commentID = ?
-                ORDER BY Comments.createdAt DESC)
-`, 
-            [commentID], 
-            (error, commentResults, fields) => {
-                if (error) {
-                    console.error('Error fetching comment: ' + error);
-                    return res.status(500).json({ error: 'An error occurred while fetching the comment.' });
-                }
-
-                // Check if the comment exists
-                if (commentResults.length === 0) {
-                    console.error('Comment with ID ' + commentID + ' not found.');
-                    return res.status(404).json({ error: 'Comment not found.' });
-                }
-
-                const comment = commentResults[0]; // Extract the first comment from the results
-                console.log('Comment fetched successfully:', comment);
-                return res.status(200).json({ comment });
+        // Execute the query
+        connection.query(query, [commentID], (error, results, fields) => {
+            if (error) {
+                console.error('Error fetching comment and replies:', error);
+                return res.status(500).json({ error: 'An error occurred while fetching the comment and replies.' });
             }
-        );
+
+            // Check if the comment exists
+            if (results.length === 0) {
+                console.error('Comment with ID ' + commentID + ' not found.');
+                return res.status(404).json({ error: 'Comment not found.' });
+            }
+
+            // Organize comment and replies
+            const comment = {
+                commentID: results[0].commentID,
+                content: results[0].commentContent,
+                createdAt: results[0].commentCreatedAt,
+                commenter: {
+                    userId: results[0].commenterUserId,
+                    imageUrl: results[0].commenterImageUrl,
+                    fullname: results[0].commenterFullname
+                },
+                replies: []
+            };
+
+            // Push replies into comment.replies array
+            results.forEach(row => {
+                if (row.replyID) {
+                    comment.replies.push({
+                        replyID: row.replyID,
+                        content: row.replyContent,
+                        createdAt: row.replyCreatedAt,
+                        userId: row.replyUserId
+                    });
+                }
+            });
+
+            console.log('Comment and replies fetched successfully:', comment);
+            return res.status(200).json({ comment });
+        });
+
     } catch (error) {
         console.error('Error getting comment by ID: ' + error);
         return res.status(500).json({ error: 'An internal server error occurred.' });
     }
 }
+
 
 
 // Function to get replies by comment ID
