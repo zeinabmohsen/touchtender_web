@@ -69,3 +69,21 @@ exports.getScheduleByDoctorId = async (req, res) => {
         return res.status(500).json({ error: 'An internal server error occurred.' });
     }
 };
+
+exports.deleteSchedule = async (req, res) => {
+    try {
+        const { scheduleId } = req.params;
+
+        connection.query('DELETE FROM schedules WHERE schedule_id = ?', [scheduleId], (error, results) => {
+            if (error) {
+                console.error('Error deleting schedule: ' + error);
+                return res.status(500).json({ error: 'An error occurred while deleting the schedule.' });
+            }
+            console.log('Schedule deleted successfully.');
+            return res.status(200).json({ message: 'Schedule deleted successfully.' });
+        });
+    } catch (error) {
+        console.error('Error deleting schedule: ' + error);
+        return res.status(500).json({ error: 'An internal server error occurred.' });
+    }
+};

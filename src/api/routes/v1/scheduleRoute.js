@@ -5,6 +5,7 @@ const scheduleController = require('../../controllers/scheduleController');
 router.post('', scheduleController.createSchedule);
 
 router.put('/:scheduleId', scheduleController.updateSchedule);
+router.delete('/:scheduleId', scheduleController.deleteSchedule);
 
 router.get('/:doctorId', scheduleController.getScheduleByDoctorId);
 

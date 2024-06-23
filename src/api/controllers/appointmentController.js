@@ -86,44 +86,61 @@ exports.getAppointmentsByUser = async (req, res) => {
 exports.getAvailableTimeSlots = async (req, res) => {
     try {
         const { doctorId, appointmentDate } = req.params;
+        const appointmentDayOfWeek = new Date(appointmentDate).getDay();
 
-        // Fetch existing appointments for the given doctor on the chosen date
-        connection.query('SELECT start_time, end_time FROM appointments WHERE doctor_id = ? AND appointment_date = ?', [doctorId, appointmentDate], (error, results) => {
-            if (error) {
-                console.error('Error fetching appointments for doctor on chosen date: ' + error);
-                return res.status(500).json({ error: 'An error occurred while fetching appointments.' });
+        // Fetch the doctor's schedule for the specific day of the week
+        connection.query('SELECT start_time, end_time, slot_duration FROM schedules WHERE doctor_id = ? AND day_of_week = ?', [doctorId, appointmentDayOfWeek], (scheduleError, scheduleResults) => {
+            if (scheduleError) {
+                console.error('Error fetching schedule for doctor: ' + scheduleError);
+                return res.status(500).json({ error: 'An error occurred while fetching the doctor\'s schedule.' });
             }
-            console.log('Appointments fetched successfully.');
 
-            // Assuming time slots are available every 30 minutes from 8 AM to 4 PM
-            const availableTimeSlots = [];
-            let currentTime = new Date(`${appointmentDate}T08:00:00`);
+            if (scheduleResults.length === 0) {
+                return res.status(404).json({ error: 'No schedule found for the doctor on the chosen day.' });
+            }
 
-            while (currentTime <= new Date(`${appointmentDate}T16:00:00`)) {
-                const slotEndTime = new Date(currentTime.getTime() + 30 * 60000); // Adding 30 minutes
+            const { start_time: scheduleStartTime, end_time: scheduleEndTime, slot_duration } = scheduleResults[0];
 
-                // Check if the current slot is already occupied
-                const isOccupied = results.some(appointment => {
-                    const appointmentStartTime = new Date(`${appointmentDate}T${appointment.start_time}`);
-                    const appointmentEndTime = new Date(`${appointmentDate}T${appointment.end_time}`);
-                    return currentTime >= appointmentStartTime && currentTime < appointmentEndTime;
-                });
-
-                if (!isOccupied) {
-                    availableTimeSlots.push({ start_time: currentTime.toTimeString().slice(0, 5), end_time: slotEndTime.toTimeString().slice(0, 5) });
+            // Fetch existing appointments for the given doctor on the chosen date
+            connection.query('SELECT start_time, end_time FROM appointments WHERE doctor_id = ? AND appointment_date = ?', [doctorId, appointmentDate], (appointmentError, appointmentResults) => {
+                if (appointmentError) {
+                    console.error('Error fetching appointments for doctor on chosen date: ' + appointmentError);
+                    return res.status(500).json({ error: 'An error occurred while fetching appointments.' });
                 }
 
-                currentTime = slotEndTime;
-            }
+                console.log('Appointments fetched successfully.');
 
-            console.log('Available time slots fetched successfully.');
-            return res.status(200).json({ availableTimeSlots });
+                // Generate available time slots based on the schedule and exclude occupied slots
+                const availableTimeSlots = [];
+                let currentTime = new Date(`${appointmentDate}T${scheduleStartTime}`);
+
+                while (currentTime < new Date(`${appointmentDate}T${scheduleEndTime}`)) {
+                    const slotEndTime = new Date(currentTime.getTime() + slot_duration * 60000); // Adding slot duration in minutes
+
+                    // Check if the current slot is already occupied
+                    const isOccupied = appointmentResults.some(appointment => {
+                        const appointmentStartTime = new Date(`${appointmentDate}T${appointment.start_time}`);
+                        const appointmentEndTime = new Date(`${appointmentDate}T${appointment.end_time}`);
+                        return currentTime >= appointmentStartTime && currentTime < appointmentEndTime;
+                    });
+
+                    if (!isOccupied) {
+                        availableTimeSlots.push({ start_time: currentTime.toTimeString().slice(0, 5), end_time: slotEndTime.toTimeString().slice(0, 5) });
+                    }
+
+                    currentTime = slotEndTime;
+                }
+
+                console.log('Available time slots fetched successfully.');
+                return res.status(200).json({ availableTimeSlots });
+            });
         });
     } catch (error) {
         console.error('Error fetching available time slots: ' + error);
         return res.status(500).json({ error: 'An internal server error occurred.' });
     }
 };
+
 
 exports.getAppointmentsByDoctor = async (req, res) => {
     try {
