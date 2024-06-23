@@ -28,10 +28,10 @@ exports.uploadImage = multer({ storage, fileFilter }).single('doctor_image');
 
 exports.createDoctor = async (req, res) => {
   try {
-    const { doctor_name, specialty, number, description, experince , region } = req.body;
+    const { doctor_name, specialty, number, description, experience, region, email, password } = req.body;
 
     // Validate user input
-    if (!doctor_name || !specialty || !number || !description ) {
+    if (!doctor_name || !specialty || !number || !description || !email || !password) {
       return res.status(400).json({ error: 'All fields are required.' });
     }
 
@@ -42,10 +42,13 @@ exports.createDoctor = async (req, res) => {
       imageUrl = `/uploads/doctors/${req.file.filename}`; // Set imageUrl to file path
     }
 
+    // Hash the password before storing it
+    const hashedPassword = password
+
     // Insert new doctor record into the database
     connection.query(
-      'INSERT INTO doctors (doctor_name, specialty, number, description, experince,region , doctor_image) VALUES (?, ?, ?,?, ?, ?, ?)',
-      [doctor_name, specialty, number, description, experince,region , imageUrl],
+      'INSERT INTO doctors (doctor_name, specialty, number, description, experience, region, email, password, doctor_image) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [doctor_name, specialty, number, description, experience, region, email, hashedPassword, imageUrl],
       (error, results) => {
         if (error) {
           console.error('Error creating doctor: ' + error);
@@ -62,7 +65,9 @@ exports.createDoctor = async (req, res) => {
           specialty: specialty,
           number: number,
           description: description,
-          region:region,
+          experience: experience,
+          region: region,
+          email: email,
           doctor_image: imageUrl // Add doctor_image to newDoctor
         };
 
@@ -80,7 +85,7 @@ exports.createDoctor = async (req, res) => {
 exports.updateDoctor = async (req, res) => {
   try {
     const { id } = req.params;
-    const { doctor_name, specialty, number, description, experince, region } = req.body;
+    const { doctor_name, specialty, number, description, experience, region } = req.body;
     console.log(req.body)
     let imageUrl = ""; // Initialize imageUrl variable
 
@@ -91,8 +96,8 @@ exports.updateDoctor = async (req, res) => {
 
     // Update the doctor record in the database
     connection.query(
-      'UPDATE doctors SET doctor_name = ?, specialty = ?, number = ?, description = ?, experince = ?, region = ?, doctor_image = ? WHERE doctor_id = ?', 
-      [doctor_name, specialty, number, description, experince, region, imageUrl, id], 
+      'UPDATE doctors SET doctor_name = ?, specialty = ?, number = ?, description = ?, experience = ?, region = ?, doctor_image = ? WHERE doctor_id = ?', 
+      [doctor_name, specialty, number, description, experience, region, imageUrl, id], 
       (error, results) => {
         if (error) {
           console.error('Error updating doctor: ' + error);
@@ -111,7 +116,7 @@ exports.updateDoctor = async (req, res) => {
           specialty: specialty,
           number: number,
           description: description,
-          experince: experince,
+          experience: experience,
           region: region,
           doctor_image: imageUrl // Add imageUrl to updatedDoctor
         };
