@@ -60,6 +60,82 @@ exports.createAppointment = async (req, res) => {
     }
 };
 
+exports.updateAppointment = async (req, res) => {
+    try {
+        const { appointmentId } = req.params;
+        const { userId, doctorId, appointmentDate, startTime, endTime, reason } = req.body;
+        connection.query('SELECT * FROM schedules WHERE doctor_id = ? AND day_of_week = DAYOFWEEK(?) AND start_time <= ? AND end_time >= ?', 
+            [doctorId, appointmentDate, startTime, endTime], (error, results) => {
+                if (error) {
+                    console.error('Error validating appointment: ' + error);
+                    return res.status(500).json({ error: 'An error occurred while validating the appointment.' });
+                }
+
+                console.log('Schedule validation results:', results);
+
+                if (results.length === 0) {
+                    return res.status(400).json({ error: 'The appointment does not fall within the doctor\'s schedule.' });
+                }
+
+                connection.query('SELECT * FROM appointments WHERE doctor_id = ? AND appointment_date = ? AND start_time = ? AND end_time = ? AND appointment_id != ?', 
+                    [doctorId, appointmentDate, startTime, endTime, appointmentId], (error, results) => {
+                        if (error) {
+                            console.error('Error checking uniqueness of appointment: ' + error);
+                            return res.status(500).json({ error: 'An error occurred while checking the uniqueness of the appointment.' });
+                        }
+
+                        console.log('Uniqueness check results:', results);
+
+                        if (results.length > 0) {
+                            return res.status(400).json({ error: 'An appointment already exists for the specified time slot.' });
+                        }
+                        connection.query('UPDATE appointments SET user_id = ?, doctor_id = ?, appointment_date = ?, start_time = ?, end_time = ?, reason = ?, status = ? WHERE appointment_id = ?',
+                            [userId, doctorId, appointmentDate, startTime, endTime, reason, 'Scheduled', appointmentId],
+                            (error, results) => {
+                                if (error) {
+                                    console.error('Error updating appointment: ' + error);
+                                    return res.status(500).json({ error: 'An error occurred while updating the appointment.' });
+                                }
+                                if (results.affectedRows === 0) {
+                                    return res.status(404).json({ error: 'Appointment not found.' });
+                                }
+                                console.log('Appointment updated successfully.');
+                                return res.status(200).json({ message: 'Appointment updated successfully.' });
+                            });
+                    });
+            });
+    } catch (error) {
+        console.error('Error updating appointment: ' + error);
+        return res.status(500).json({ error: 'An internal server error occurred.' });
+    }
+};
+
+
+
+
+exports.deleteAppointment = async (req, res) => {
+    try {
+        const { appointmentId } = req.params;
+
+        connection.query('DELETE FROM appointments WHERE appointment_id = ?', [appointmentId], (error, results) => {
+            if (error) {
+                console.error('Error deleting appointment: ' + error);
+                return res.status(500).json({ error: 'An error occurred while deleting the appointment.' });
+            }
+
+            if (results.affectedRows === 0) {
+                return res.status(404).json({ error: 'Appointment not found.' });
+            }
+
+            console.log('Appointment deleted successfully.');
+            return res.status(200).json({ message: 'Appointment deleted successfully.' });
+        });
+    } catch (error) {
+        console.error('Error deleting appointment: ' + error);
+        return res.status(500).json({ error: 'An internal server error occurred.' });
+    }
+};
+
 
 
 exports.getAppointmentsByUser = async (req, res) => {
