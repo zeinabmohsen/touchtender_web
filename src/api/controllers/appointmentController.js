@@ -1,20 +1,19 @@
 const connection = require("../../config/database");
 
-// Function to create an appointment
 exports.createAppointment = async (req, res) => {
     try {
         const { userId, doctorId, appointmentDate, startTime, endTime, reason } = req.body;
 
-        // Check if the user already has an appointment with the specified doctor
-        connection.query('SELECT * FROM appointments WHERE user_id = ? AND doctor_id = ? AND status != "Cancelled"', 
-            [userId, doctorId], (error, results) => {
+        // Check if the user already has an appointment with the specified doctor on the same day
+        connection.query('SELECT * FROM appointments WHERE user_id = ? AND doctor_id = ? AND DATE(appointment_date) = DATE(?) AND status != "Cancelled"', 
+            [userId, doctorId, appointmentDate], (error, results) => {
                 if (error) {
                     console.error('Error checking user appointments: ' + error);
                     return res.status(500).json({ error: 'An error occurred while checking user appointments.' });
                 }
 
                 if (results.length > 0) {
-                    return res.status(400).json({ error: 'You already have an appointment with this doctor.' });
+                    return res.status(400).json({ error: 'You already have an appointment with this doctor on the same day.' });
                 }
 
                 // Validate the appointment against the doctor's schedule
@@ -62,13 +61,25 @@ exports.createAppointment = async (req, res) => {
 };
 
 
-// Function to get appointments by user ID
+
 exports.getAppointmentsByUser = async (req, res) => {
     try {
         const { userId } = req.params;
+        const query = `
+            SELECT 
+                a.*, 
+                d.doctor_name, 
+                d.doctor_image, 
+                d.specialty 
+            FROM 
+                appointments a
+            JOIN 
+                doctors d ON a.doctor_id = d.doctor_id
+            WHERE 
+                a.user_id = ?;
+        `;
 
-        // Fetch appointments for the given user from the database
-        connection.query('SELECT * FROM appointments WHERE user_id = ?', [userId], (error, results) => {
+        connection.query(query, [userId], (error, results) => {
             if (error) {
                 console.error('Error getting appointments by user ID: ' + error);
                 return res.status(500).json({ error: 'An error occurred while fetching appointments.' });
@@ -82,7 +93,6 @@ exports.getAppointmentsByUser = async (req, res) => {
     }
 };
 
-// Function to fetch available time slots for a doctor on a chosen date
 exports.getAvailableTimeSlots = async (req, res) => {
     try {
         const { doctorId, appointmentDate } = req.params;
