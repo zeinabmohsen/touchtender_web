@@ -60,6 +60,7 @@ exports.createAppointment = async (req, res) => {
     }
 };
 
+
 exports.updateAppointment = async (req, res) => {
     try {
         const { appointmentId } = req.params;
@@ -258,6 +259,29 @@ exports.getAppointmentsByDoctor = async (req, res) => {
         });
     } catch (error) {
         console.error('Error getting appointments by doctor ID: ' + error);
+        return res.status(500).json({ error: 'An internal server error occurred.' });
+    }
+};
+
+exports.updateAppointmentStatus = async (req, res) => {
+    try {
+        const { appointmentId } = req.params;
+        const { status } = req.body;
+
+       
+        connection.query('UPDATE appointments SET status = ? WHERE appointment_id = ?', [status, appointmentId], (error, results) => {
+            if (error) {
+                console.error('Error updating appointment status: ' + error);
+                return res.status(500).json({ error: 'An error occurred while updating the appointment status.' });
+            }
+            if (results.affectedRows === 0) {
+                return res.status(404).json({ error: 'Appointment not found.' });
+            }
+            console.log(`Appointment status updated to ${status} successfully.`);
+            return res.status(200).json({ message: `Appointment status updated to ${status} successfully.` });
+        });
+    } catch (error) {
+        console.error('Error updating appointment status: ' + error);
         return res.status(500).json({ error: 'An internal server error occurred.' });
     }
 };
