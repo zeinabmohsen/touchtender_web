@@ -77,8 +77,7 @@ exports.login2 = async (req, res) => {
         // Get the IP location
         const location = await getIpLocation(userIp);
 
-        // Send login email
-        await sendLoginEmail(email, location);
+      
     } catch (err) {
         console.error('Error during login process:', err);
         res.status(500).json({ success: false, error: 'Internal Server Error' });
@@ -109,8 +108,7 @@ exports.loginWeb = async (req, res) => {
       // Send both token and doctor ID in the response
       res.json({ success: true, token, userId: doctor.doctor_id , role:doctor.role});
   
-      // Send login email without IP address and location
-      await sendLoginEmail(email, 'Login successful');
+  
     } catch (err) {
       console.error('Error during login process:', err);
       res.status(500).json({ success: false, error: 'Internal Server Error' });
