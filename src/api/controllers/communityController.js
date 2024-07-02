@@ -85,6 +85,7 @@ exports.getCommentById = async (req, res) => {
                 Comments.commentID, 
                 Comments.content AS commentContent, 
                 Comments.createdAt AS commentCreatedAt, 
+                Comments.category AS commentCategory, 
                 user.userId AS commenterUserId, 
                 user.image_url AS commenterImageUrl, 
                 user.fullname AS commenterFullname, 
@@ -116,6 +117,7 @@ exports.getCommentById = async (req, res) => {
                 commentID: results[0].commentID,
                 content: results[0].commentContent,
                 createdAt: results[0].commentCreatedAt,
+                category:results[0].commentCategory,
                 commenter: {
                     userId: results[0].commenterUserId,
                     imageUrl: results[0].commenterImageUrl,
