@@ -306,13 +306,13 @@ exports.getUserById = async (req, res) => {
     return Math.floor(100000 + Math.random() * 900000); 
 }
 
+
 /**
 * Handle forgot password request
 */
 exports.forgotPassword = (req, res) => {
     const { email } = req.body;
 
-    
     const resetCode = generateResetCode();
     const expiresAt = new Date(Date.now() + 3600000); 
 
@@ -321,34 +321,32 @@ exports.forgotPassword = (req, res) => {
             console.error('Error selecting user:', err);
             return res.status(500).send('Server error');
         }
-        if (result.length === 0) return res.status(404).send('User not found');
+        
+        if (result.length === 0) {
+            return res.status(404).send('User not found');
+        }
 
         const userId = result[0].userid;
+        const token = jwt.sign({ userId }, jwtSecret, { expiresIn: '1h' });
 
-        connection.query('INSERT INTO password_resets (user_id, reset_code, expires_at) VALUES (?, ?, ?)',
-            [userId, resetCode, expiresAt], (err) => {
-                if (err) {
-                    console.error('Error inserting reset code:', err);
-                    return res.status(500).send('Server error');
-                }
-
-                
-                sendEmail(email, 'Reset Your TenderTouch App Password', `
-We understand how crucial TenderTouch is for your child's needs. To ensure uninterrupted access, here's your verification code:
-                    
-    Verification Code: ${resetCode}
-                    
-If you need assistance, we're here to help.
-                    
-Best,
-TenderTouch Support Team
-                `)
-                .then(() => res.send('Verification code sent to your email'))
-                .catch(error => {
-                    console.error('Error sending email:', error);
-                    res.status(500).send('Error sending email');
-                });
-            });
+        sendEmail(email, 'Reset Your TenderTouch App Password', `
+            We understand how crucial TenderTouch is for your child's needs. To ensure uninterrupted access, here's your verification code:
+            
+            Verification Code: ${resetCode}
+            
+            If you need assistance, we're here to help.
+            
+            Best,
+            TenderTouch Support Team
+        `)
+        .then(() => {
+            // Send the JWT token back to the client
+            res.json({ token, message: 'Verification code sent to your email' });
+        })
+        .catch(error => {
+            console.error('Error sending email:', error);
+            res.status(500).send('Error sending email');
+        });
     });
 };
 
