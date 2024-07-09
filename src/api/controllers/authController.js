@@ -11,6 +11,10 @@ const asyncHandler = require('express-async-handler');
 const sendEmail = require('../utils/sendEmail');
 const { promisify } = require('util');
 
+require('dotenv').config();
+
+const jwtSecret = process.env.JWT_SECRET_KEY;
+
 // Promisify the MySQL query method
 const query = promisify(connection.query).bind(connection);
 
@@ -302,53 +306,65 @@ exports.getUserById = async (req, res) => {
     }
   };
 
-  function generateResetCode() {
-    return Math.floor(100000 + Math.random() * 900000); 
-}
-
-
-/**
-* Handle forgot password request
-*/
-exports.forgotPassword = (req, res) => {
+// Function to generate reset code
+function generateResetCode() {
+    return Math.floor(100000 + Math.random() * 900000);
+  }
+  
+  /**
+  * Handle forgot password request
+  */
+  exports.forgotPassword = (req, res) => {
     const { email } = req.body;
-
+  
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+  
     const resetCode = generateResetCode();
-    const expiresAt = new Date(Date.now() + 3600000); 
-
+    const expiresAt = new Date(Date.now() + 3600000); // 1 hour from now
+  
     connection.query('SELECT userid FROM user WHERE email = ?', [email], (err, result) => {
-        if (err) {
-            console.error('Error selecting user:', err);
-            return res.status(500).send('Server error');
-        }
-        
-        if (result.length === 0) {
-            return res.status(404).send('User not found');
-        }
-
-        const userId = result[0].userid;
-        const token = jwt.sign({ userId }, jwtSecret, { expiresIn: '1h' });
-
-        sendEmail(email, 'Reset Your TenderTouch App Password', `
-            We understand how crucial TenderTouch is for your child's needs. To ensure uninterrupted access, here's your verification code:
-            
-            Verification Code: ${resetCode}
-            
-            If you need assistance, we're here to help.
-            
-            Best,
-            TenderTouch Support Team
-        `)
+      if (err) {
+        console.error('Error selecting user:', err);
+        return res.status(500).json({ error: 'Server error' });
+      }
+  
+      if (result.length === 0) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+  
+      const userId = result[0].userid;
+      
+      if (!jwtSecret) {
+        console.error('JWT secret is not defined');
+        return res.status(500).json({ error: 'JWT secret is not defined' });
+      }
+  
+      const token = jwt.sign({ userId }, jwtSecret, { expiresIn: '1h' });
+  
+      sendEmail(email, 'Reset Your TenderTouch App Password', `
+        We understand how crucial TenderTouch is for your child's needs. To ensure uninterrupted access, here's your verification code:
+  
+        Verification Code: ${resetCode}
+  
+        If you need assistance, we're here to help.
+  
+        Best,
+        TenderTouch Support Team
+      `)
         .then(() => {
-            // Send the JWT token back to the client
-            res.json({ token, message: 'Verification code sent to your email' });
+          // You can store the reset code and its expiration in your database if needed
+          return res.status(200).json({ token, message: 'Verification code sent to your email' });
         })
         .catch(error => {
-            console.error('Error sending email:', error);
-            res.status(500).send('Error sending email');
+          console.error('Error sending email:', error);
+          return res.status(500).json({ error: 'Error sending email' });
         });
     });
-};
+  };
+  
+
 
 /**
 * Handle reset password request
