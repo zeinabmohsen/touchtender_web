@@ -1,6 +1,7 @@
 const connection = require("../../config/database");
 const { v4: uuidv4 } = require('uuid');
 const multer = require('multer');
+const sendEmail = require('../utils/sendEmail');
 // const storage = multer.diskStorage({
 //   destination: 'uploads/place',
 //   filename: (req, file, cb) => {
@@ -144,19 +145,35 @@ exports.createPlace = async (req, res) => {
 
 exports.confirmPlace = async (req, res) => {
   try {
-    const placeId = req.params.id;
-    console.log("Confirming place with ID:", placeId);
+      const placeId = req.params.id;
+      console.log("Confirming place with ID:", placeId);
 
-    // Update place status to 'approved'
-    const updatePlaceQuery = 'UPDATE places SET status = ? WHERE placeid = ?';
-    await queryAsync(updatePlaceQuery, ['approved', placeId]);
+      // Update place status to 'approved'
+      const updatePlaceQuery = 'UPDATE places SET status = ? WHERE placeid = ?';
+      await queryAsync(updatePlaceQuery, ['approved', placeId]);
 
-    console.log('Place confirmed by admin.');
+      // Fetch user details associated with the place
+      const getUserEmailQuery = 'SELECT u.email FROM places p JOIN user u ON p.userid = u.userid WHERE p.placeid = ?';
+      const userResult = await queryAsync(getUserEmailQuery, [placeId]);
 
-    return res.status(200).json({ message: 'Place confirmed by admin.' });
+      if (userResult.length === 0) {
+          return res.status(404).json({ error: 'User not found for this place.' });
+      }
+
+      const userEmail = userResult[0].email;
+
+      // Send email notification
+      await sendEmail(userEmail, 'Tender Touch App Place Approved', `
+Your place with ID ${placeId} has been approved by the admin.
+Thank you for submitting your place.
+      `);
+
+      console.log('Place confirmed by admin.');
+
+      return res.status(200).json({ message: 'Place confirmed by admin.' });
   } catch (error) {
-    console.error('Error confirming place: ' + error);
-    return res.status(500).json({ error: 'An error occurred while confirming the place.' });
+      console.error('Error confirming place: ' + error);
+      return res.status(500).json({ error: 'An error occurred while confirming the place.' });
   }
 };
 
@@ -168,12 +185,26 @@ exports.rejectPlace = async (req, res) => {
     await connection.beginTransaction();
 
     try {
-      // Delete associated records from related tables (e.g., photos, place_services)
+      // Fetch user details associated with the place
+      const getUserEmailQuery = 'SELECT u.email FROM places p JOIN user u ON p.userid = u.userid WHERE p.placeid = ?';
+      const userResult = await queryAsync(getUserEmailQuery, [placeId]);
+
+      if (userResult.length === 0) {
+        await connection.rollback();
+        return res.status(404).json({ error: 'User not found for this place.' });
+      }
+
+      const userEmail = userResult[0].email;
+
+      // Delete associated records from related tables (e.g., photos, place_services, place_ratings)
       const deletePhotosQuery = 'DELETE FROM photos WHERE placeid = ?';
       await queryAsync(deletePhotosQuery, [placeId]);
 
       const deletePlaceServicesQuery = 'DELETE FROM place_services WHERE placeid = ?';
       await queryAsync(deletePlaceServicesQuery, [placeId]);
+
+      const deletePlaceRatingsQuery = 'DELETE FROM place_ratings WHERE place_id = ?';
+      await queryAsync(deletePlaceRatingsQuery, [placeId]);
 
       // Delete the place itself from the places table
       const deletePlaceQuery = 'DELETE FROM places WHERE placeid = ?';
@@ -181,6 +212,12 @@ exports.rejectPlace = async (req, res) => {
 
       // Commit the transaction
       await connection.commit();
+
+      // Send email notification
+      await sendEmail(userEmail, 'Place Rejected', `
+        Your place with ID ${placeId} has been rejected by the admin.
+        Please review and resubmit if necessary.
+      `);
 
       console.log('Place and associated records rejected by admin.');
       return res.status(200).json({ message: 'Place and associated records rejected by admin.' });
@@ -195,6 +232,7 @@ exports.rejectPlace = async (req, res) => {
     return res.status(500).json({ error: 'An error occurred while rejecting the place.' });
   }
 };
+
 
 
 exports.getPendingPlaces = async (req, res) => {

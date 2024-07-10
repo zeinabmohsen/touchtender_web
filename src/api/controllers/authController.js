@@ -343,27 +343,37 @@ function generateResetCode() {
   
       const token = jwt.sign({ userId }, jwtSecret, { expiresIn: '1h' });
   
-      sendEmail(email, 'Reset Your TenderTouch App Password', `
-        We understand how crucial TenderTouch is for your child's needs. To ensure uninterrupted access, here's your verification code:
+      // Insert reset code and expiration time into the database
+      connection.query(
+        'INSERT INTO password_resets (user_id, reset_code, expires_at, created_at) VALUES (?, ?, ?, NOW())',
+        [userId, resetCode, expiresAt],
+        (insertErr, insertResult) => {
+          if (insertErr) {
+            console.error('Error inserting reset code:', insertErr);
+            return res.status(500).json({ error: 'Server error' });
+          }
   
-        Verification Code: ${resetCode}
+          sendEmail(email, 'Reset Your TenderTouch App Password', `
+            We understand how crucial TenderTouch is for your child's needs. To ensure uninterrupted access, here's your verification code:
   
-        If you need assistance, we're here to help.
+            Verification Code: ${resetCode}
   
-        Best,
-        TenderTouch Support Team
-      `)
-        .then(() => {
-          // You can store the reset code and its expiration in your database if needed
-          return res.status(200).json({ token, message: 'Verification code sent to your email' });
-        })
-        .catch(error => {
-          console.error('Error sending email:', error);
-          return res.status(500).json({ error: 'Error sending email' });
-        });
+            If you need assistance, we're here to help.
+  
+            Best,
+            TenderTouch Support Team
+          `)
+            .then(() => {
+              return res.status(200).json({ token, message: 'Verification code sent to your email' });
+            })
+            .catch(error => {
+              console.error('Error sending email:', error);
+              return res.status(500).json({ error: 'Error sending email' });
+            });
+        }
+      );
     });
-  };
-  
+};
 
 
 /**
